@@ -7,19 +7,69 @@ output:
 
 
 ## Loading and preprocessing the data
+unzip("repdata%2Fdata%2Factivity.zip")
+activity<-read.csv("activity.csv")
 
+total_missing<-sum(is.na(activity))
 
+act_NA<-filter(activity,is.na(steps))
+act_NA<-select(act_NA,2,3)
+activity <- na.omit(activity)
+
+Total number of missing values in the dataset is 2304.
 
 ## What is mean total number of steps taken per day?
 
+daily_sum<-activity %>% group_by(date) %>% summarize(total_steps=sum(steps))
+hist(daily_sum$total_steps, breaks=19, main="Total Number of Steps Taken Each Day", xlab="Daily Total Steps")
 
+mean_steps<-mean(daily_sum$total_steps)
+median_steps<-median(daily_sum$total_steps)
+
+Mean of the total number of steps taken per day is 1.076618910^{4}. Median of the total number of steps taken per day is 10765.
 
 ## What is the average daily activity pattern?
 
-
+mean_interval<-activity %>% group_by(interval) %>% summarize(mean_steps=mean(steps))
+with(mean_interval, plot(interval,mean_steps, type = "l", main="Time series plot of the 
+                         5-minute interval and the average steps of all days", 
+                         ylab="Average Steps of All Days", xlab="5-minute intervals"))
+                         
+most_active<-mean_interval[mean_interval$mean_steps==max(mean_interval$mean_steps),][1]
+The 835th 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps.
 
 ## Imputing missing values
 
+act_NA<-merge(act_NA,mean_interval, by="interval")
 
+act_NA<-arrange(act_NA, date, interval,mean_steps)
+colnames(act_NA)[3] <- "steps"
+
+data<-rbind(act_NA, activity)
+data<-arrange(data, date, interval,steps)
+
+new_daily_sum<-data %>% group_by(date) %>% summarize(total_steps=sum(steps))
+hist(new_daily_sum$total_steps, breaks=19, main="Total Number of Steps Taken Each Day", xlab="Daily Total Steps")
+
+new_mean_steps<-mean(new_daily_sum$total_steps)
+new_median_steps<-median(new_daily_sum$total_steps)
+
+After the NAs have been replaced by the mean for that 5-minute interval, the mean of the total number of steps taken per day is 1.076618910^{4}. The median of the total number of steps taken per day is 1.076618910^{4}.
+
+The mean is the same as the estimate from the first part of the assignment. The median has been shifted a little to the right. After imput the missing data with the mean of that five-minute interval the peak number of the daily steps is bigger.
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+data$date<-as.Date(data$date)
+data$Day_in_week<-ifelse((weekdays(data$date) %in% c("Monday","Tuesday","Wednesday","Thursday","Friday")), 
+                         "weekday","weekend")
+                         
+data_by_interval<-group_by(data,Day_in_week,interval)
+mean_data_interval<-data %>% group_by(Day_in_week,interval) %>% summarize(mean_steps=mean(steps))
+ggplot(mean_data_interval, aes(x=interval, y=mean_steps)) + 
+  geom_line(color="violet") + 
+  facet_wrap(~ Day_in_week, nrow=2, ncol=1) +
+  labs(x="Interval", y="Number of steps") +
+  theme_bw()
+
+Yes, there are differences in activity patterns between weekdays and weekends.
